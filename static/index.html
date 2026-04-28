@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Мои задачи</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; background: #f9f9f9; }
+    h1 { text-align: center; color: #333; }
+    .form { display: flex; gap: 10px; margin-bottom: 20px; }
+    .form input { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+    .form button { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .form button:hover { background: #45a049; }
+    ul { list-style: none; padding: 0; }
+    li { background: white; padding: 12px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+    .delete-btn:hover { background: #da190b; }
+    .empty { text-align: center; color: #777; padding: 20px; }
+  </style>
+</head>
+<body>
+  <h1>📝 Мои задачи</h1>
+
+  <form class="form" id="taskForm">
+    <input type="text" id="taskInput" placeholder="Например: Выучить Python" required />
+    <button type="submit">Добавить</button>
+  </form>
+
+  <ul id="taskList"></ul>
+
+  <script>
+    const API = ""; // пустая строка = тот же домен
+
+    // Загрузка задач
+    async function loadTasks() {
+      const res = await fetch(API + "/tasks");
+      const tasks = await res.json();
+      const list = document.getElementById("taskList");
+      list.innerHTML = "";
+
+      if (tasks.length === 0) {
+        list.innerHTML = '<li class="empty">Нет задач. Добавь первую!</li>';
+        return;
+      }
+
+      tasks.forEach(task => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>${task.title}</span>
+          <button class="delete-btn" onclick="deleteTask(${task.id})">Удалить</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    // Добавление задачи
+    document.getElementById("taskForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("taskInput");
+      const title = input.value.trim();
+      if (!title) return;
+
+      await fetch(API + "/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title })
+      });
+
+      input.value = "";
+      loadTasks();
+    });
+
+    // Удаление задачи
+    async function deleteTask(id) {
+      if (!confirm("Удалить эту задачу?")) return;
+      await fetch(API + "/tasks/" + id, { method: "DELETE" });
+      loadTasks();
+    }
+
+    // Загрузить при старте
+    loadTasks();
+  </script>
+</body>
+</html>
