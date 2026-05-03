@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeamFlow Student</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #0f172a; --surface: #1e293b; --surface-2: #334155; --text: #f8fafc; --text-muted: #94a3b8; --primary: #6366f1; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --border: #334155; --radius: 12px; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { width: 280px; background: var(--surface); padding: 20px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; }
+    .main { flex: 1; padding: 24px; overflow-y: auto; }
+    .card { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    h1, h2, h3 { margin: 0; font-weight: 600; }
+    input, select { width: 100%; padding: 10px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+    button { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+    button:hover { opacity: 0.9; }
+    button.sec { background: var(--surface-2); color: var(--text-muted); }
+    button.acc { background: var(--success); }
+    button.rej { background: var(--danger); }
+    ul { list-style: none; padding: 0; }
+    li { background: var(--surface-2); padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; }
+    li:hover { background: #475569; }
+    .task { background: var(--surface-2); padding: 14px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid var(--primary); }
+    .meta { display: flex; gap: 8px; font-size: 12px; color: var(--text-muted); margin-top: 6px; flex-wrap: wrap; }
+    .badge { padding: 2px 6px; border-radius: 4px; background: #475569; font-size: 11px; }
+    .badge.done { background: var(--success); color: #022c22; }
+    .badge.late { background: var(--danger); color: #450a0a; }
+    .badge.today { background: var(--warning); color: #451a03; }
+    .comments { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: none; }
+    .cmt { background: var(--surface); padding: 6px; border-radius: 4px; margin-bottom: 4px; font-size: 13px; }
+    .cmt b { color: var(--primary); font-size: 11px; display: block; }
+    .progress { height: 6px; background: var(--surface-2); border-radius: 3px; margin: 12px 0; overflow: hidden; }
+    .fill { height: 100%; background: var(--success); width: 0%; transition: 0.4s; }
+    .hidden { display: none !important; }
+    .link { color: var(--primary); cursor: pointer; font-size: 13px; margin-top: 6px; display: inline-block; }
+    .inv-box { display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--warning); }
+    .inv-box div { display: flex; gap: 6px; }
+    .inv-box button { width: auto; padding: 6px 10px; font-size: 12px; }
+    @media (max-width: 800px) { .app { flex-direction: column; } .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="header" style="border:none; padding:0; margin:0;">
+      <h1>🎓 TeamFlow</h1>
+      <button onclick="logout()" class="sec" style="width:auto; padding:6px;">Выйти</button>
+    </div>
+    <div id="auth-msg" style="color:var(--danger); font-size:13px; min-height:18px;"></div>
+    <div id="auth-form">
+      <input type="text" id="username" placeholder="Логин">
+      <input type="password" id="password" placeholder="Пароль">
+      <button onclick="login()">Войти / Регистрация</button>
+    </div>
+    <div id="teams-panel" class="hidden">
+      <h3 style="font-size:14px; color:var(--text-muted); margin:16px 0 8px;">Мои группы</h3>
+      <ul id="teams-list"></ul>
+      <hr style="border-color:var(--border); margin:16px 0;">
+      <h3 style="font-size:14px; color:var(--text-muted); margin:0 0 8px;">Новая группа</h3>
+      <input type="text" id="new-team-name" placeholder="Название">
+      <select id="team-template">
+        <option value="">Пустая</option>
+        <option value="coursework">📚 Курсовая</option>
+        <option value="presentation">📊 Презентация</option>
+        <option value="lab_work">🧪 Лабораторная</option>
+      </select>
+      <button onclick="createTeam()">Создать</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div id="welcome" class="card" style="text-align:center; padding:40px;">
+      <h2>Добро пожаловать</h2>
+      <p style="color:var(--text-muted);">Войдите слева, чтобы начать</p>
+    </div>
+
+    <div id="workspace" class="hidden">
+      <div id="inv-card" class="card hidden">
+        <div class="header"><h2>📬 Приглашения</h2></div>
+        <div id="inv-list"></div>
+        <div id="inv-empty" style="text-align:center; color:var(--text-muted); padding:10px;">Нет новых приглашений</div>
+      </div>
+
+      <div class="card">
+        <div class="header">
+          <div>
+            <h2 id="team-title">Задачи</h2>
+            <span style="background:var(--surface-2); padding:4px 8px; border-radius:6px; font-size:12px; color:var(--primary);">🆔 <span id="my-id">...</span></span>
+          </div>
+          <button onclick="showTeams()" class="sec" style="width:auto; padding:8px;">← Назад</button>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-muted); margin-bottom:6px;">
+          <span>Прогресс</span><span id="prog-text">0%</span>
+        </div>
+        <div class="progress"><div id="prog-fill" class="fill"></div></div>
+        
+        <div style="background:var(--surface-2); padding:12px; border-radius:8px; margin-bottom:12px;">
+          <input type="text" id="new-task" placeholder="Новая задача..." style="margin-bottom:6px;">
+          <div style="display:flex; gap:6px;">
+            <select id="assignee" style="flex:1;"><option value="">Кому?</option></select>
+            <input type="date" id="deadline" style="flex:1;">
+          </div>
+          <button onclick="addTask()" style="margin-top:6px;">➕ Добавить</button>
+        </div>
+        <div style="background:var(--surface-2); padding:12px; border-radius:8px;">
+          <h4 style="margin:0 0 8px; font-size:14px; color:var(--text-muted);">🤝 Пригласить по ID</h4>
+          <input type="number" id="inv-id" placeholder="ID пользователя">
+          <button onclick="sendInvite()" class="sec" style="margin-top:6px;">Отправить</button>
+        </div>
+      </div>
+      <ul id="task-list"></ul>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API = "";
+  let user = null, team = null;
+
+  window.onload = () => {
+    const s = localStorage.getItem('tf_user');
+    if(s) { user = JSON.parse(s); initUI(); loadTeams(); loadInv(); }
+  };
+
+  async function req(url, method='GET', body=null) {
+    const r = await fetch(API+url, {method, headers:{'Content-Type':'application/json'}, body: body?JSON.stringify(body):null});
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  async function login() {
+    const u = document.getElementById('username').value;
+    const p = document.getElementById('password').value;
+    if(!u||!p) return document.getElementById('auth-msg').textContent="Заполните поля";
+    try {
+      let d = await req('/api/login','POST',{username:u,password:p});
+      user = {id:d.user_id, username:d.username};
+    } catch(e) {
+      try {
+        d = await req('/api/register','POST',{username:u,password:p});
+        user = {id:d.id, username:d.username};
+      } catch(err) { document.getElementById('auth-msg').textContent="Ошибка: "+err.message; return; }
+    }
+    localStorage.setItem('tf_user', JSON.stringify(user));
+    initUI(); loadTeams(); loadInv();
+  }
+
+  function initUI() {
+    document.getElementById('auth-form').classList.add('hidden');
+    document.getElementById('teams-panel').classList.remove('hidden');
+    document.getElementById('welcome').classList.add('hidden');
+  }
+
+  function logout() { localStorage.removeItem('tf_user'); location.reload(); }
+
+  async function loadTeams() {
+    try {
+      const t = await req(`/api/teams?user_id=${user.id}`);
+      const l = document.getElementById('teams-list'); l.innerHTML='';
+      t.forEach(x => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${x.name}</strong>`;
+        li.onclick = () => openTeam(x.id, x.name);
+        l.appendChild(li);
+      });
+    } catch(e) { console.error(e); }
+  }
+
+  function showTeams() {
+    document.getElementById('workspace').classList.add('hidden');
+    document.getElementById('welcome').classList.remove('hidden');
+    loadTeams(); loadInv();
+  }
+
+  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ
+  async function createTeam() {
+    const name = document.getElementById('new-team-name').value;
+    const tmpl = document.getElementById('team-template').value;
+    if(!name) return;
+    try {
+      await req('/api/teams', 'POST', {name, template: tmpl, creator_id: user.id});
+      document.getElementById('new-team-name').value = '';
+      loadTeams();
+    } catch(e) { alert("Ошибка: "+e.message); }
+  }
+
+  async function loadInv() {
+    if(!user) return;
+    try {
+      const inv = await req(`/api/invitations?user_id=${user.id}`);
+      const card = document.getElementById('inv-card');
+      const list = document.getElementById('inv-list');
+      const empty = document.getElementById('inv-empty');
+      list.innerHTML = '';
+      if(inv.length===0) { card.classList.add('hidden'); return; }
+      card.classList.remove('hidden'); empty.classList.add('hidden');
+      inv.forEach(i => {
+        const d = document.createElement('div'); d.className='inv-box';
+        d.innerHTML = `<div><strong>👥 ${i.team_name}</strong><span style="font-size:12px;color:var(--text-muted)">От: ${i.sender_name}</span></div>
+                       <div><button class="acc" onclick="handleInv(${i.id},'accept')">Принять</button><button class="rej" onclick="handleInv(${i.id},'reject')">Отклонить</button></div>`;
+        list.appendChild(d);
+      });
+    } catch(e) { console.error(e); }
+  }
+
+  async function handleInv(id, act) {
+    try {
+      await req(`/api/invitations/${id}/${act}?user_id=${user.id}`, 'POST');
+      loadInv(); loadTeams();
+      alert(act==='accept' ? "✅ Вы в команде!" : "❌ Отклонено");
+    } catch(e) { alert("Ошибка: "+e.message); }
+  }
+
+  async function sendInvite() {
+    const tid = document.getElementById('inv-id').value;
+    if(!tid || parseInt(tid)===user.id) return alert("Введите корректный ID");
+    try {
+      await req(`/api/teams/${team.id}/invite?target_user_id=${tid}&requester_id=${user.id}`, 'POST');
+      alert("✅ Приглашение отправлено");
+      document.getElementById('inv-id').value = '';
+    } catch(e) { alert("❌ "+e.message); }
+  }
+
+  async function openTeam(id, name) {
+    team = {id, name};
+    document.getElementById('welcome').classList.add('hidden');
+    document.getElementById('workspace').classList.remove('hidden');
+    document.getElementById('team-title').textContent = name;
+    document.getElementById('my-id').textContent = user.id;
+    try {
+      const m = await req(`/api/teams/${id}/members?user_id=${user.id}`);
+      const sel = document.getElementById('assignee'); sel.innerHTML='<option value="">Все</option>';
+      m.forEach(x => { const o=document.createElement('option'); o.value=x.id; o.textContent=`#${x.id} ${x.username}`; sel.appendChild(o); });
+      loadTasks();
+    } catch(e) { alert("Ошибка доступа"); showTeams(); }
+  }
+
+  async function loadTasks() {
+    if(!team) return;
+    try {
+      const t = await req(`/api/teams/${team.id}/tasks?user_id=${user.id}`);
+      render(t); updateProg(t);
+    } catch(e) { console.error(e); }
+  }
+
+  function render(tasks) {
+    const l = document.getElementById('task-list'); l.innerHTML='';
+    const today = new Date().toISOString().split('T')[0];
+    tasks.forEach(t => {
+      const li = document.createElement('li'); li.className='task';
+      const late = t.deadline && t.deadline<today && !t.is_done;
+      const isToday = t.deadline===today && !t.is_done;
+      li.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:500">${t.title}</span>
+          <input type="checkbox" ${t.is_done?'checked':''} onchange="toggle(${t.id},this.checked)" style="width:18px;height:18px;accent-color:var(--success)">
+        </div>
+        <div class="meta">
+          <span class="badge ${t.is_done?'done':(late?'late':(isToday?'today':''))}">${t.is_done?'✅ Готово':(t.deadline?(isToday?'🔥 Сегодня':'📅 '+t.deadline):'⏳ Нет срока')}</span>
+          <span>👤 ${t.assignee_name?'#'+t.assigned_to+' '+t.assignee_name:'Все'}</span>
+        </div>
+        <span class="link" onclick="togCmt(this,${t.id})">💬 Комментарии</span>
+        <div class="comments" id="cmt-${t.id}">
+          <div id="cmt-list-${t.id}"></div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <input type="text" id="cmt-in-${t.id}" placeholder="Написать..." style="margin:0;font-size:13px;padding:6px">
+            <button onclick="addCmt(${t.id})" style="width:auto;padding:6px 10px;font-size:13px">OK</button>
+          </div>
+        </div>`;
+      l.appendChild(li);
+    });
+  }
+
+  async function addTask() {
+    const title = document.getElementById('new-task').value;
+    const ass = document.getElementById('assignee').value;
+    const dl = document.getElementById('deadline').value;
+    if(!title) return;
+    try {
+      await req(`/api/teams/${team.id}/tasks?user_id=${user.id}`, 'POST', {title, assigned_to:ass?parseInt(ass):null, deadline:dl||null});
+      document.getElementById('new-task').value = '';
+      loadTasks();
+    } catch(e) { alert("Ошибка: "+e.message); }
+  }
+
+  async function toggle(id, done) {
+    try { await req(`/api/tasks/${id}`, 'PATCH', {is_done:done}); loadTasks(); }
+    catch(e) { alert("Ошибка"); }
+  }
+
+  function updateProg(tasks) {
+    if(!tasks.length) return;
+    const p = Math.round((tasks.filter(t=>t.is_done).length/tasks.length)*100);
+    document.getElementById('prog-fill').style.width = p+'%';
+    document.getElementById('prog-text').textContent = p+'%';
+  }
+
+  function togCmt(el, id) {
+    const s = document.getElementById(`cmt-${id}`);
+    s.style.display = s.style.display==='block'?'none':'block';
+    if(s.style.display==='block') loadCmts(id);
+  }
+
+  async function loadCmts(id) {
+    try {
+      const c = await req(`/api/tasks/${id}/comments`);
+      const l = document.getElementById(`cmt-list-${id}`); l.innerHTML='';
+      c.forEach(x => { const d=document.createElement('div'); d.className='cmt'; d.innerHTML=`<b>${x.author}</b>${x.text}`; l.appendChild(d); });
+    } catch(e) { console.error(e); }
+  }
+
+  async function addCmt(id) {
+    const inp = document.getElementById(`cmt-in-${id}`);
+    if(!inp.value) return;
+    try {
+      await req(`/api/tasks/${id}/comments?user_id=${user.id}`, 'POST', {text:inp.value});
+      inp.value=''; loadCmts(id);
+    } catch(e) { alert("Ошибка"); }
+  }
+</script>
+</body>
+</html>
